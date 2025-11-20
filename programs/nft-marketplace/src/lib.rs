@@ -16,4 +16,9 @@ pub mod nft_marketplace {
     pub fn initialize(ctx: Context<Initialize>, seed: u64, name: String) -> Result<()> {
         ctx.accounts.init(seed, name, &ctx.bumps)
     }
+
+    pub fn list(ctx: Context<List>, _seed: u64, amount: u64) -> Result<()> {
+        ctx.accounts.list_nft(amount, &ctx.bumps)?;
+        ctx.accounts.transfer_to_vault()
+    }
 }

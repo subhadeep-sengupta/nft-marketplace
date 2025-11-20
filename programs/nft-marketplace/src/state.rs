@@ -14,7 +14,7 @@ pub struct Marketplace {
 
 #[account]
 #[derive(InitSpace)]
-pub struct List {
+pub struct Listing {
     pub maker: Pubkey,      // owner's publickey
     pub maker_mint: Pubkey, // Specific NFT mint associated with this listing
     pub price: u64,         // Price in lamports
