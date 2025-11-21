@@ -5,10 +5,6 @@ use crate::{
     error::MarketplaceError,
     state::{Listing, Marketplace},
 };
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-};
 
 #[derive(Accounts)]
 #[instruction(seed:u64, amount:u64)]
@@ -16,14 +12,7 @@ pub struct List<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
 
-    pub maker_mint: InterfaceAccount<'info, Mint>, //Asset
-
-    #[account(
-        mut,
-        associated_token::mint = maker_mint,
-        associated_token::authority = maker,
-    )]
-    pub maker_ata: InterfaceAccount<'info, TokenAccount>, // NFT ATA
+    #[account(mut)]
     /// CHECK: Validated manually in handler
     pub asset: UncheckedAccount<'info>,
 
@@ -32,7 +21,7 @@ pub struct List<'info> {
         seeds = [b"marketplace", maker.key().as_ref(), seed.to_le_bytes().as_ref()],
         bump = marketplace.marketplace_bump,
     )]
-    pub marketplace: Account<'info, Marketplace>, // MarketPlace, self-explainatory
+    pub marketplace: Box<Account<'info, Marketplace>>, // MarketPlace, self-explainatory
 
     #[account(
         init,
@@ -41,20 +30,10 @@ pub struct List<'info> {
         seeds = [marketplace.key().as_ref(), maker.key().as_ref()],
         bump,
     )]
-    pub list: Account<'info, Listing>, // Vault derived from Marketplace
+    pub list: Box<Account<'info, Listing>>, // Vault derived from Marketplace
 
-    #[account(
-        init,
-        payer = maker,
-        associated_token::mint = maker_mint,
-        associated_token::authority = list,
-        associated_token::token_program = associated_token_program,
-    )]
-    pub list_ata: InterfaceAccount<'info, TokenAccount>, // Vault ATA to hold the NFT after
     // transfer
     pub system_program: Program<'info, System>,
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
     ///CHECK: SAFE
     pub mpl_core_program: AccountInfo<'info>,
 }
@@ -67,7 +46,7 @@ impl<'info> List<'info> {
         let clock = Clock::get()?;
         self.list.set_inner(Listing {
             maker: self.maker.key(),
-            maker_mint: self.maker_mint.key(),
+            maker_mint: self.asset.key(),
             price: amount,
             is_listed: true,
             listed_at: clock.unix_timestamp,
