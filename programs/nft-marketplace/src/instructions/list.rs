@@ -27,7 +27,7 @@ pub struct List<'info> {
         init,
         payer = maker,
         space = 8 + Listing::INIT_SPACE,
-        seeds = [marketplace.key().as_ref(), maker.key().as_ref()],
+        seeds = [marketplace.key().as_ref(), maker.key().as_ref(), asset.key().as_ref()],
         bump,
     )]
     pub list: Box<Account<'info, Listing>>, // Vault derived from Marketplace

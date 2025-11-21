@@ -141,6 +141,7 @@ describe("nft-marketplace", () => {
 
 	it("Lists NFT on the marketplace", async () => {
 
+		const assetPubkey = new anchor.web3.PublicKey(asset.publicKey);
 		const [marketplacePda] = anchor.web3.PublicKey.findProgramAddressSync(
 			[
 				Buffer.from("marketplace"),
@@ -152,13 +153,15 @@ describe("nft-marketplace", () => {
 
 		// Derive listing PDA
 		const [listPda] = anchor.web3.PublicKey.findProgramAddressSync(
-			[marketplacePda.toBuffer(), maker.publicKey.toBuffer()],
+			[marketplacePda.toBuffer(),
+			maker.publicKey.toBuffer(),
+			assetPubkey.toBuffer(),
+			],
 			program.programId
 		);
 
-		const assetPublickey = new anchor.web3.PublicKey(asset.publicKey);
 
-		const makerMint = assetPublickey;
+		const makerMint = assetPubkey;
 
 		const MPL_CORE_PROGRAM_ID = new anchor.web3.PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
 
@@ -166,7 +169,7 @@ describe("nft-marketplace", () => {
 			const tx = await program.methods.list(seed, listingPrice)
 				.accountsStrict({
 					maker: maker.publicKey,
-					asset: assetPublickey,
+					asset: assetPubkey,
 					marketplace: marketplacePda,
 					list: listPda,
 					systemProgram: anchor.web3.SystemProgram.programId,
@@ -207,5 +210,54 @@ describe("nft-marketplace", () => {
 			throw error;
 		}
 	});
+
+	it("Should buy the NFT from the Marketplace", async () => {
+
+		const assetPubkey = new anchor.web3.PublicKey(asset.publicKey);
+		const [marketplacePda] = await anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				Buffer.from("marketplace"),
+				maker.publicKey.toBuffer(),
+				seed.toArrayLike(Buffer, "le", 8),
+			],
+			program.programId
+		);
+
+		const [listPda] = await anchor.web3.PublicKey.findProgramAddressSync([
+			marketplacePda.toBuffer(),
+			maker.publicKey.toBuffer(),
+			assetPubkey.toBuffer(),
+		], program.programId
+		);
+
+		const buyer = anchor.web3.Keypair.generate();
+
+		const airdropSig = await connection.requestAirdrop(buyer.publicKey, 20_000_000_000);
+		await connection.confirmTransaction(airdropSig);
+
+
+		const tx = await program.methods.buy(seed)
+			.accountsStrict({
+				buyer: buyer.publicKey,
+				asset: assetPubkey,
+				maker: maker.publicKey,
+				marketplace: marketplacePda,
+				listing: listPda,
+				systemProgram: anchor.web3.SystemProgram.programId,
+				mplCoreProgram: new anchor.web3.PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"),
+			})
+			.signers([buyer])
+			.rpc();
+
+		console.log(`Buy tx signature: ${tx}`);
+
+		let listingAccount;
+		try {
+			listingAccount = await program.account.listing.fetch(listPda);
+			assert.fail("Listing account not closed after purchase!");
+		} catch (error) {
+			assert.include((error as Error).message, "Account does not exist", "Listing account was successfully closed.");
+		}
+	})
 
 });

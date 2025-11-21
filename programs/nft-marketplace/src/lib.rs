@@ -21,4 +21,12 @@ pub mod nft_marketplace {
         ctx.accounts.list_nft(amount, &ctx.bumps)?;
         ctx.accounts.transfer_to_vault()
     }
+
+    pub fn buy(ctx: Context<Buy>, seed: u64) -> Result<()> {
+        ctx.accounts.buy(seed)
+    }
+
+    pub fn delist(ctx: Context<Delist>, seed: u64) -> Result<()> {
+        ctx.accounts.delist(seed)
+    }
 }
