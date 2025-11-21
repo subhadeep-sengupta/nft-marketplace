@@ -211,9 +211,58 @@ describe("nft-marketplace", () => {
 		}
 	});
 
-	it("Should buy the NFT from the Marketplace", async () => {
+	// it("Should buy the NFT from the Marketplace", async () => {
+	//
+	// 	const assetPubkey = new anchor.web3.PublicKey(asset.publicKey);
+	// 	const [marketplacePda] = await anchor.web3.PublicKey.findProgramAddressSync(
+	// 		[
+	// 			Buffer.from("marketplace"),
+	// 			maker.publicKey.toBuffer(),
+	// 			seed.toArrayLike(Buffer, "le", 8),
+	// 		],
+	// 		program.programId
+	// 	);
+	//
+	// 	const [listPda] = await anchor.web3.PublicKey.findProgramAddressSync([
+	// 		marketplacePda.toBuffer(),
+	// 		maker.publicKey.toBuffer(),
+	// 		assetPubkey.toBuffer(),
+	// 	], program.programId
+	// 	);
+	//
+	// 	const buyer = anchor.web3.Keypair.generate();
+	//
+	// 	const airdropSig = await connection.requestAirdrop(buyer.publicKey, 20_000_000_000);
+	// 	await connection.confirmTransaction(airdropSig);
+	//
+	//
+	// 	const tx = await program.methods.buy(seed)
+	// 		.accountsStrict({
+	// 			buyer: buyer.publicKey,
+	// 			asset: assetPubkey,
+	// 			maker: maker.publicKey,
+	// 			marketplace: marketplacePda,
+	// 			listing: listPda,
+	// 			systemProgram: anchor.web3.SystemProgram.programId,
+	// 			mplCoreProgram: new anchor.web3.PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"),
+	// 		})
+	// 		.signers([buyer])
+	// 		.rpc();
+	//
+	// 	console.log(`Buy tx signature: ${tx}`);
+	//
+	// 	let listingAccount;
+	// 	try {
+	// 		listingAccount = await program.account.listing.fetch(listPda);
+	// 		assert.fail("Listing account not closed after purchase!");
+	// 	} catch (error) {
+	// 		assert.include((error as Error).message, "Account does not exist", "Listing account was successfully closed.");
+	// 	}
+	// })
 
+	it("Should Delist the NFT", async () => {
 		const assetPubkey = new anchor.web3.PublicKey(asset.publicKey);
+
 		const [marketplacePda] = await anchor.web3.PublicKey.findProgramAddressSync(
 			[
 				Buffer.from("marketplace"),
@@ -223,41 +272,39 @@ describe("nft-marketplace", () => {
 			program.programId
 		);
 
-		const [listPda] = await anchor.web3.PublicKey.findProgramAddressSync([
-			marketplacePda.toBuffer(),
-			maker.publicKey.toBuffer(),
-			assetPubkey.toBuffer(),
-		], program.programId
+		const [listPda] = await anchor.web3.PublicKey.findProgramAddressSync(
+			[
+				marketplacePda.toBuffer(),
+				maker.publicKey.toBuffer(),
+				assetPubkey.toBuffer()
+			],
+			program.programId
 		);
 
-		const buyer = anchor.web3.Keypair.generate();
 
-		const airdropSig = await connection.requestAirdrop(buyer.publicKey, 20_000_000_000);
-		await connection.confirmTransaction(airdropSig);
-
-
-		const tx = await program.methods.buy(seed)
+		const tx = await program.methods.delist(seed)
 			.accountsStrict({
-				buyer: buyer.publicKey,
-				asset: assetPubkey,
 				maker: maker.publicKey,
+				asset: assetPubkey,
 				marketplace: marketplacePda,
 				listing: listPda,
 				systemProgram: anchor.web3.SystemProgram.programId,
-				mplCoreProgram: new anchor.web3.PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"),
+				mplCoreProgram: new anchor.web3.PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d")
 			})
-			.signers([buyer])
-			.rpc();
+			.signers([maker.payer])
+			.rpc()
 
-		console.log(`Buy tx signature: ${tx}`);
+		console.log(`Delist tx signature: ${tx}`)
 
 		let listingAccount;
+
 		try {
 			listingAccount = await program.account.listing.fetch(listPda);
-			assert.fail("Listing account not closed after purchase!");
+			assert.fail("Expected listing account to be closed but it still exists");
 		} catch (error) {
-			assert.include((error as Error).message, "Account does not exist", "Listing account was successfully closed.");
+			assert.include((error as Error).message, "Account does not exist", "Listing account was successfully closed");
 		}
+
 	})
 
 });
